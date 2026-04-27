@@ -1,17 +1,22 @@
-export type {
-  EligibilityOutcome,
-  EligibilityVerificationProvider,
-  EligibilityVerificationRequest,
-  EligibilityVerificationResult,
-  EligibilityVerificationSuccess,
+import { prisma } from "@/lib/prisma";
+import { MockEligibilityVerificationProvider } from "./mock-eligibility.provider";
+import { GroqEligibilityVerificationProvider } from "./groq-eligibility.provider";
+import type { 
+  EligibilityVerificationProvider, 
+  EligibilityVerificationRequest 
 } from "./types";
-export {
-  MockEligibilityVerificationProvider,
-  createMockEligibilityVerificationProvider,
-} from "./mock-eligibility.provider";
-export { AiEligibilityVerificationProvider, createAiEligibilityVerificationProvider } from "./ai-eligibility.provider";
 
-import { createMockEligibilityVerificationProvider } from "./mock-eligibility.provider";
+export function createEligibilityProvider(): EligibilityVerificationProvider {
+  const provider = process.env.ELIGIBILITY_PROVIDER;
+  const hasGroq = !!process.env.GROQ_API_KEY;
+
+  if (provider === "groq_langchain" || (!provider && hasGroq)) {
+    return new GroqEligibilityVerificationProvider();
+  }
+
+  // Fallback to mock
+  return new MockEligibilityVerificationProvider();
+}
 
 /**
  * Trigger an asynchronous eligibility check for a given policy.
@@ -25,17 +30,20 @@ export async function runEligibilityCheck(policyId: string): Promise<void> {
 
     if (!policy) return;
 
+    const provider = createEligibilityProvider();
+
     // Create initial check record
     const check = await prisma.eligibilityCheck.create({
       data: {
         policyId: policy.id,
         status: "PENDING",
-        providerKey: "mock_eligibility",
+        providerKey: provider.providerKey,
         requestPayload: {
           memberId: policy.memberId,
           payerKey: policy.payerKey,
           patientId: policy.patientId,
-        },
+          subscriberName: policy.subscriberName,
+        } as any,
       },
     });
 
@@ -44,15 +52,15 @@ export async function runEligibilityCheck(policyId: string): Promise<void> {
         action: "ELIGIBILITY_CHECK_REQUESTED",
         entityType: "EligibilityCheck",
         entityId: check.id,
-        metadata: { policyId: policy.id },
+        metadata: { policyId: policy.id, provider: provider.providerKey },
       },
     });
 
-    const provider = createMockEligibilityVerificationProvider();
-    const result = await provider.verify({
-      memberId: policy.memberId,
-      payerKey: policy.payerKey,
+    const result = await provider.verifyEligibility({
+      memberId: policy.memberId || "",
+      payerKey: policy.payerKey || "",
       patientDob: policy.patient.dateOfBirth?.toISOString().slice(0, 10) || "",
+      subscriberName: policy.subscriberName || "",
       correlationId: check.id,
     });
 
@@ -62,8 +70,8 @@ export async function runEligibilityCheck(policyId: string): Promise<void> {
     let reviewNote: string | null = null;
 
     if (result.ok) {
-      finalStatus = result.data.outcome as "VERIFIED" | "NEEDS_REVIEW" | "FAILED";
-      summaryLine = result.data.summary;
+      finalStatus = result.data.status as "VERIFIED" | "NEEDS_REVIEW" | "FAILED";
+      summaryLine = result.data.summaryLine;
       responsePayload = result.data as any;
       
       if (finalStatus === "NEEDS_REVIEW" || finalStatus === "FAILED") {
@@ -100,7 +108,6 @@ export async function runEligibilityCheck(policyId: string): Promise<void> {
     });
   } catch (error) {
     console.error(`[eligibility:run] Critical error for policy ${policyId}:`, error);
-    // Try to record the failure if possible
     try {
       await prisma.eligibilityCheck.create({
         data: {

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { triggerOcr } from "@/services/ocr";
-import { z } from "zod";
+import { uploadFile } from "@/lib/storage";
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -57,27 +56,9 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "Policy not found" }, { status: 404 });
     }
 
-    // Upload to S3
-    const s3 = new S3Client({
-      endpoint: process.env.STORAGE_ENDPOINT,
-      region: "auto", // Most S3-compatible providers don't care or use 'auto'
-      credentials: {
-        accessKeyId: process.env.STORAGE_ACCESS_KEY || "",
-        secretAccessKey: process.env.STORAGE_SECRET_KEY || "",
-      },
-    });
-
+    // Upload to local storage
     const buffer = Buffer.from(await file.arrayBuffer());
-    const storageKey = `intake/${patient.id}/${policy.id}/${side.toLowerCase()}-${Date.now()}.${file.name.split(".").pop()}`;
-
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: process.env.STORAGE_BUCKET,
-        Key: storageKey,
-        Body: buffer,
-        ContentType: file.type,
-      })
-    );
+    const uploadResult = await uploadFile(buffer, file.name, "insurance-cards");
 
     // Create InsuranceCard record
     const card = await prisma.insuranceCard.upsert({
@@ -88,7 +69,7 @@ export async function POST(
         },
       },
       update: {
-        storageKey,
+        storageKey: uploadResult.storageKey,
         mimeType: file.type,
         ocrStatus: "PENDING",
         ocrErrorMessage: null,
@@ -96,7 +77,7 @@ export async function POST(
       create: {
         policyId: policy.id,
         side,
-        storageKey,
+        storageKey: uploadResult.storageKey,
         mimeType: file.type,
         ocrStatus: "PENDING",
       },
@@ -111,6 +92,7 @@ export async function POST(
         metadata: {
           side,
           mimeType: file.type,
+          storageKey: uploadResult.storageKey,
         },
       },
     });
@@ -120,7 +102,12 @@ export async function POST(
       console.error(`[api:intake:upload:ocr:error] ${card.id}`, err)
     );
 
-    return NextResponse.json({ ok: true, cardId: card.id, ocrStatus: "PENDING" });
+    return NextResponse.json({ 
+      ok: true, 
+      cardId: card.id, 
+      ocrStatus: "PENDING",
+      publicUrl: uploadResult.publicUrl 
+    });
   } catch (error) {
     console.error("[api:intake:upload-card:error]", error);
     return NextResponse.json(

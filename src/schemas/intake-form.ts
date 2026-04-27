@@ -48,6 +48,10 @@ export const insuranceStepSchema = z
     }),
     cardFrontFileName: z.string().min(1, "Upload the front of your insurance card"),
     cardBackFileName: z.string().min(1, "Upload the back of your insurance card"),
+    cardFrontId: z.string().optional(),
+    cardBackId: z.string().optional(),
+    cardFrontStatus: z.enum(["IDLE", "UPLOADING", "SUCCESS", "ERROR"]).optional(),
+    cardBackStatus: z.enum(["IDLE", "UPLOADING", "SUCCESS", "ERROR"]).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.subscriberRelationship !== "SELF" && !data.groupNumber?.trim()) {

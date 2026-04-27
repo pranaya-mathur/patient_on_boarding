@@ -37,6 +37,11 @@ export function InsuranceStep({ token, policyId }: { token: string; policyId?: s
       return;
     }
 
+    const statusKey = side === "FRONT" ? "insurance.cardFrontStatus" : "insurance.cardBackStatus";
+    const idKey = side === "FRONT" ? "insurance.cardFrontId" : "insurance.cardBackId";
+
+    setValue(statusKey, "UPLOADING");
+
     const formData = new FormData();
     formData.append("file", file);
     formData.append("side", side);
@@ -48,12 +53,18 @@ export function InsuranceStep({ token, policyId }: { token: string; policyId?: s
         body: formData,
       });
 
-      if (!res.ok) {
-        const data = await res.json();
+      const data = await res.json();
+
+      if (res.ok) {
+        setValue(idKey, data.cardId);
+        setValue(statusKey, "SUCCESS");
+      } else {
         console.error("[insurance:upload:failed]", data.error);
+        setValue(statusKey, "ERROR");
       }
     } catch (err) {
       console.error("[insurance:upload:error]", err);
+      setValue(statusKey, "ERROR");
     }
   };
 
@@ -165,8 +176,15 @@ export function InsuranceStep({ token, policyId }: { token: string; policyId?: s
             htmlFor="cardFront"
             className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/80 bg-muted/25 px-4 py-10 text-center transition-colors duration-150 hover:border-primary/30 hover:bg-muted/40"
           >
-            <span className="text-sm font-medium text-foreground">Tap to capture or upload</span>
-            <span className="text-xs text-muted-foreground">Opens your camera on supported phones</span>
+            <span className="text-sm font-medium text-foreground">
+              {control._formValues.insurance?.cardFrontStatus === "SUCCESS" ? "Card uploaded ✓" : 
+               control._formValues.insurance?.cardFrontStatus === "UPLOADING" ? "Uploading..." : 
+               "Tap to capture or upload"}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {control._formValues.insurance?.cardFrontStatus === "ERROR" ? "Upload failed — try again" : 
+               "Opens your camera on supported phones"}
+            </span>
             <Input
               id="cardFront"
               type="file"
@@ -192,8 +210,15 @@ export function InsuranceStep({ token, policyId }: { token: string; policyId?: s
             htmlFor="cardBack"
             className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/80 bg-muted/25 px-4 py-10 text-center transition-colors duration-150 hover:border-primary/30 hover:bg-muted/40"
           >
-            <span className="text-sm font-medium text-foreground">Tap to capture or upload</span>
-            <span className="text-xs text-muted-foreground">Same guidance as the front</span>
+            <span className="text-sm font-medium text-foreground">
+              {control._formValues.insurance?.cardBackStatus === "SUCCESS" ? "Card uploaded ✓" : 
+               control._formValues.insurance?.cardBackStatus === "UPLOADING" ? "Uploading..." : 
+               "Tap to capture or upload"}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {control._formValues.insurance?.cardBackStatus === "ERROR" ? "Upload failed — try again" : 
+               "Same guidance as the front"}
+            </span>
             <Input
               id="cardBack"
               type="file"

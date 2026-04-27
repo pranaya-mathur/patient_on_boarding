@@ -21,6 +21,7 @@ import { WelcomeStep } from "./steps/WelcomeStep";
 import { DemographicsStep } from "./steps/DemographicsStep";
 import { InsuranceStep } from "./steps/InsuranceStep";
 import { ReviewStep } from "./steps/ReviewStep";
+import { ChatWidget } from "@/components/patient/chat/ChatWidget";
 
 const TOTAL_STEPS = 4;
 
@@ -39,6 +40,18 @@ export function IntakeSessionClient({ token }: IntakeSessionClientProps) {
   const [policyId, setPolicyId] = useState<string | undefined>(undefined);
   const [isNavigating, startTransition] = useTransition();
   const autosaveTimer = useRef<number | undefined>(undefined);
+
+  const autosave = async (value: IntakeFormValues) => {
+    try {
+      await fetch(`/api/intake/${token}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ demographics: value.demographics, insurance: value.insurance }),
+      });
+    } catch (err) {
+      // Silently ignore autosave errors as per requirements
+    }
+  };
 
   const form = useForm<IntakeFormValues>({
     defaultValues: intakeDefaultValues,
@@ -202,6 +215,7 @@ export function IntakeSessionClient({ token }: IntakeSessionClientProps) {
               {step === 2 ? <DemographicsStep /> : null}
               {step === 3 ? <InsuranceStep token={token} policyId={policyId} /> : null}
               {step === 4 ? <ReviewStep /> : null}
+              <ChatWidget token={token} />
             </div>
           )}
         </main>

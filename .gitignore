@@ -24,6 +24,14 @@ __pycache__/
 # debug
 npm-debug.log*
 
+# ide
+.idea
+.vscode
+.DS_Store
+
+# Local storage
+uploads/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

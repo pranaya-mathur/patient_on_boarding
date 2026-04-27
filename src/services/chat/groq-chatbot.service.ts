@@ -1,5 +1,5 @@
 import { ChatGroq } from "@langchain/groq";
-import { SystemMessage, HumanMessage } from "@langchain/core/messages";
+import { SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
 import { failureResult, successResult } from "@/services/shared/adapter-result";
 import type { ChatRequest, ChatResponse, ChatbotService } from "./types";
 
@@ -17,6 +17,9 @@ export class GroqChatbotService implements ChatbotService {
   readonly serviceKey = "groq_langchain";
 
   async reply(request: ChatRequest): Promise<ChatResponse> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
     try {
       if (!process.env.GROQ_API_KEY) {
         throw new Error("Missing GROQ_API_KEY");
@@ -24,30 +27,67 @@ export class GroqChatbotService implements ChatbotService {
 
       const model = new ChatGroq({ 
         apiKey: process.env.GROQ_API_KEY, 
-        model: "llama3-70b-8192" 
+        model: "llama3-70b-8192",
       });
 
-      const res = await model.invoke([
+      // Task 2: Build message array with capped history
+      const history = (request.history || []).slice(-12); // Last 6 exchanges
+      const messages = [
         new SystemMessage(SYSTEM_PROMPT),
+        ...history.map((m) => 
+          m.role === "user" ? new HumanMessage(m.content) : new AIMessage(m.content)
+        ),
         new HumanMessage(request.message)
+      ];
+
+      // Task 3: 10s timeout
+      const res = await Promise.race([
+        model.invoke(messages, { signal: controller.signal }),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error("Timeout")), 10000)
+        )
       ]);
 
-      const message = typeof res.content === "string" ? res.content : JSON.stringify(res.content);
+      clearTimeout(timeoutId);
+
+      // Task 3: Extract text block content
+      let content = "";
+      if (typeof res.content === "string") {
+        content = res.content;
+      } else if (Array.isArray(res.content)) {
+        // Extract first text block if present
+        const textBlock = res.content.find(b => typeof b === "string" || (typeof b === "object" && "text" in b));
+        content = typeof textBlock === "string" ? textBlock : (textBlock as any)?.text || "";
+      }
+
+      // Task 3: Sanitize (strip HTML/scripts)
+      const sanitizedMessage = content.replace(/<[^>]*>?/gm, "").trim();
 
       // suggestedFollowUps via keyword matching
       const suggestedFollowUps: string[] = [];
-      const lowerMsg = message.toLowerCase();
+      const lowerMsg = sanitizedMessage.toLowerCase();
       if (lowerMsg.includes("upload")) suggestedFollowUps.push("How do I upload my insurance card?");
       if (lowerMsg.includes("arrival") || lowerMsg.includes("check-in")) suggestedFollowUps.push("What do I bring on arrival day?");
       if (lowerMsg.includes("reminder")) suggestedFollowUps.push("When will I get a reminder?");
 
       return successResult({ 
-        message, 
+        message: sanitizedMessage, 
         citations: [], 
         suggestedFollowUps 
       });
     } catch (error) {
+      clearTimeout(timeoutId);
       console.error("[chat:groq-service:error]", error);
+      
+      if (error instanceof Error && (error.name === "AbortError" || error.message === "Timeout")) {
+        return failureResult({ 
+          code: "CHAT_TIMEOUT", 
+          message: "Response timed out", 
+          retryable: true, 
+          transient: true 
+        });
+      }
+
       return failureResult({ 
         code: "CHAT_FAILED", 
         message: error instanceof Error ? error.message : "Chat failed",

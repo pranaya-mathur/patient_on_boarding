@@ -1,5 +1,5 @@
 import { failureResult, successResult } from "@/services/shared/adapter-result";
-import type { IntakeChatbotService, IntakeChatRequest, IntakeChatResult } from "./types";
+import type { ChatbotService, ChatRequest, ChatResponse } from "./types";
 
 const FAQ: Record<string, string> = {
   hours: "Most clinics publish hours on your appointment confirmation. This demo cannot look up live hours.",
@@ -11,10 +11,10 @@ const FAQ: Record<string, string> = {
 /**
  * Keyword FAQ bot — swap for HTTP LLM with strict system prompt + guardrails.
  */
-export class MockIntakeChatbotService implements IntakeChatbotService {
-  readonly providerKey = "mock_intake_chat";
+export class MockChatbotService implements ChatbotService {
+  readonly serviceKey = "mock_intake_chat";
 
-  async reply(request: IntakeChatRequest): Promise<IntakeChatResult> {
+  async reply(request: ChatRequest): Promise<ChatResponse> {
     if (request.message.includes("rate") || request.message.includes("timeout")) {
       return failureResult({
         code: "CHAT_RATE_LIMITED",
@@ -22,7 +22,6 @@ export class MockIntakeChatbotService implements IntakeChatbotService {
         retryable: true,
         transient: true,
         retryAfterMs: 3000,
-        providerRequestId: `mock-chat-${request.correlationId ?? request.sessionId.slice(-8)}`,
       });
     }
 
@@ -45,33 +44,34 @@ export class MockIntakeChatbotService implements IntakeChatbotService {
           "I can help with registration, insurance upload, and visit logistics only — not medical questions. Please contact your care team for clinical concerns.",
         retryable: false,
         transient: false,
-        details: { sessionId: request.sessionId },
       });
     }
 
+    let message = "I can answer short questions about intake steps, insurance upload, and general visit logistics. Try asking about documents, insurance cards, or parking.";
+    let suggestedFollowUps: string[] = ["What documents do I need?", "How do I upload my insurance card?"];
+
     if (m.includes("hour") || m.includes("open")) {
-      return successResult({ message: FAQ.hours, citations: ["faq:hours"] });
-    }
-    if (m.includes("park")) {
-      return successResult({ message: FAQ.parking, citations: ["faq:parking"] });
-    }
-    if (m.includes("insurance") || m.includes("card")) {
-      return successResult({ message: FAQ.insurance });
-    }
-    if (m.includes("document") || m.includes("id")) {
-      return successResult({ message: FAQ.documents });
+      message = FAQ.hours;
+      suggestedFollowUps = ["Is there parking?"];
+    } else if (m.includes("park")) {
+      message = FAQ.parking;
+      suggestedFollowUps = ["What documents do I need?"];
+    } else if (m.includes("insurance") || m.includes("card")) {
+      message = FAQ.insurance;
+      suggestedFollowUps = ["How do I upload my insurance card?"];
+    } else if (m.includes("document") || m.includes("id")) {
+      message = FAQ.documents;
+      suggestedFollowUps = ["Do I need my insurance card?"];
     }
 
-    return failureResult({
-      code: "OFF_TOPIC",
-      message:
-        "I can answer short questions about intake steps, insurance upload, and general visit logistics. Try asking about documents, insurance cards, or parking.",
-      retryable: false,
-      transient: false,
+    return successResult({ 
+      message, 
+      citations: [], 
+      suggestedFollowUps 
     });
   }
 }
 
-export function createMockIntakeChatbotService(): IntakeChatbotService {
-  return new MockIntakeChatbotService();
+export function createMockChatbotService(): ChatbotService {
+  return new MockChatbotService();
 }

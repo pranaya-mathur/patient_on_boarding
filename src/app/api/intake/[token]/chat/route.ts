@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { GroqChatbotService } from "@/services/chat/groq-chatbot.service";
-import { MockChatbotService } from "@/services/chat/mock-chatbot.service";
+import { createChatbotService } from "@/services/chat";
 
-const MEDICAL_KEYWORDS = [
-  "diagnose", "symptom", "medication", "prescribe", "treatment", "dose",
-  "pain", "chest", "emergency", "doctor", "nurse", "clinical", "bleed", "fever", "surgery"
-];
+// In-memory rate limiting Map
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
 export async function POST(
   req: NextRequest,
@@ -14,64 +11,74 @@ export async function POST(
 ) {
   try {
     const { token } = params;
-    const { message, sessionId } = await req.json();
 
+    // Validate intake token against DB
     const patient = await prisma.patient.findUnique({
       where: { intakeToken: token },
+      select: { id: true },
     });
 
     if (!patient) {
-      return NextResponse.json({ ok: false, error: "Patient not found" }, { status: 404 });
+      return NextResponse.json(
+        { ok: false, error: "Invalid session" },
+        { status: 404 }
+      );
     }
 
-    // Guardrail check
-    const lowerMessage = message.toLowerCase();
-    if (MEDICAL_KEYWORDS.some(k => lowerMessage.includes(k))) {
-      return NextResponse.json({ 
-        ok: true, 
-        data: { 
-          message: "For medical questions or emergencies, please contact your clinic directly or call 911.", 
-          suggestedFollowUps: [], 
-          isGuardrail: true 
-        } 
+    const body = await req.json();
+    const { message, history } = body;
+
+    // Validate message
+    if (!message || typeof message !== "string" || message.length > 500) {
+      return NextResponse.json(
+        { ok: false, error: "Message too long or empty" },
+        { status: 400 }
+      );
+    }
+
+    // Rate limiting: 20 per hour
+    const now = Date.now();
+    const limit = rateLimitMap.get(patient.id);
+
+    if (limit && now < limit.resetAt) {
+      if (limit.count >= 20) {
+        return NextResponse.json(
+          { ok: false, error: "Too many messages" },
+          { status: 429 }
+        );
+      }
+      limit.count++;
+    } else {
+      rateLimitMap.set(patient.id, {
+        count: 1,
+        resetAt: now + 3600000, // 1 hour
       });
     }
 
-    // Provider selection
-    const service = process.env.GROQ_API_KEY 
-      ? new GroqChatbotService() 
-      : new MockChatbotService();
-
-    const result = await service.reply({ message, sessionId, patientId: patient.id });
+    const service = createChatbotService();
+    const result = await service.reply({
+      message,
+      history,
+      sessionId: token,
+    });
 
     if (result.ok) {
-      return NextResponse.json({ 
-        ok: true, 
-        data: { 
-          message: result.data.message, 
-          suggestedFollowUps: result.data.suggestedFollowUps, 
-          isGuardrail: false 
-        } 
+      return NextResponse.json({
+        ok: true,
+        message: result.data.message,
+        suggestedFollowUps: result.data.suggestedFollowUps || [],
       });
     } else {
-      return NextResponse.json({ 
-        ok: true, 
-        data: { 
-          message: "I'm having trouble right now. Please contact the clinic directly.", 
-          suggestedFollowUps: [], 
-          isGuardrail: true 
-        } 
-      });
+      return NextResponse.json(
+        { ok: false, error: result.error.message },
+        { status: 500 }
+      );
     }
   } catch (error) {
-    console.error("[api:intake:chat:error]", error);
-    return NextResponse.json({ 
-      ok: true, 
-      data: { 
-        message: "I'm having trouble right now. Please contact the clinic directly.", 
-        suggestedFollowUps: [], 
-        isGuardrail: true 
-      } 
-    });
+    console.error("[api:chat:error]", error);
+    return NextResponse.json(
+      { ok: false, error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }

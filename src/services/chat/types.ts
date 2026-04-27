@@ -1,28 +1,33 @@
 import type { AdapterResult } from "@/services/shared/adapter-result";
 
-export type IntakeChatRequest = {
+export type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export type ChatRequest = {
   /** Opaque session / intake id for logging (no PHI in chat logs by policy) */
   sessionId: string;
   message: string;
+  history?: ChatMessage[];
   locale?: string;
   correlationId?: string;
 };
 
-export type IntakeChatSuccess = {
+export type ChatSuccess = {
   message: string;
   citations?: string[];
   suggestedFollowUps?: string[];
 };
 
-export type IntakeChatResult = AdapterResult<IntakeChatSuccess>;
+export type ChatResponse = AdapterResult<ChatSuccess>;
 
 /**
  * Constrained intake / logistics assistant (no clinical advice).
- * Policy refusals should use `ok: false` with stable `error.code` for analytics.
  */
-export interface IntakeChatbotService {
-  readonly providerKey: string;
-  reply(request: IntakeChatRequest): Promise<IntakeChatResult>;
+export interface ChatbotService {
+  readonly serviceKey: string;
+  reply(request: ChatRequest): Promise<ChatResponse>;
 }
 
 /** Non-retryable policy outcomes — distinct from transport failures */

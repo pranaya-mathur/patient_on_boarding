@@ -6,16 +6,16 @@ Outbound integrations are defined as **TypeScript interfaces** with **normalized
 
 | Interface | File | Mock factory |
 |-----------|------|----------------|
-| `OcrProvider` | `ocr/types.ts` | `createMockOcrProvider()` |
-| `EligibilityVerificationProvider` | `eligibility/types.ts` | `createMockEligibilityVerificationProvider()` |
+| `OcrProvider` | `ocr/types.ts` | `createMockOcrProvider()` / `createAiOcrProvider()` |
+| `EligibilityVerificationProvider` | `eligibility/types.ts` | `createMockEligibilityVerificationProvider()` / `createAiEligibilityVerificationProvider()` |
 | `ReminderService` | `reminders/types.ts` | `createMockReminderService()` |
-| `IntakeChatbotService` | `chat/types.ts` | `createMockIntakeChatbotService()` |
+| `IntakeChatbotService` | `chat/types.ts` | `createMockIntakeChatbotService()` / `createAiIntakeChatbotService()` |
 
 ## Swapping providers
 
 1. Implement the interface in a new file (e.g. `ocr/textract.provider.ts`).
 2. Construct it in server bootstrap / DI (e.g. from `process.env`).
-3. Use `providers.mock.ts` as a reference for `createProductionServiceProviders()` when ready.
+3. Use `createServiceProviders()` in `providers.ts` to switch mock vs AI adapters via env flags.
 
 ## Results & retries
 
@@ -25,4 +25,7 @@ Outbound integrations are defined as **TypeScript interfaces** with **normalized
 
 ## Bundle
 
-`providers.mock.ts` exports `createMockServiceProviders()` for local development.
+`providers.ts` exports `createServiceProviders()` and supports:
+
+- `USE_AI_BACKEND=true`
+- `AI_BACKEND_URL=http://localhost:8001`

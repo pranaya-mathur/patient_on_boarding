@@ -7,3 +7,4 @@ export type {
   OcrProvider,
 } from "./types";
 export { MockOcrProvider, createMockOcrProvider } from "./mock-ocr.provider";
+export { AiOcrProvider, createAiOcrProvider } from "./ai-ocr.provider";

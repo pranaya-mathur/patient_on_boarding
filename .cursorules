@@ -1,0 +1,32 @@
+# Patient On-Boarding — Project Rules
+
+## Architecture & scope
+
+- Prefer simple, modular architecture.
+- Do not add features outside the defined MVP.
+- Before major refactors, explain the plan.
+- After significant changes, summarize what changed and what remains.
+
+## Frontend (React / Next.js)
+
+- Keep components reusable and typed.
+- Use TypeScript strictly.
+- Use Tailwind utility classes cleanly.
+- Prefer Server Components unless client state or browser APIs require a Client Component.
+- Build mobile-first.
+- Prioritize accessibility and readability.
+- Avoid overdesigned SaaS patterns and AI-looking visuals.
+
+## Forms & validation
+
+- Use Zod for validation.
+- Use React Hook Form for forms.
+
+## Data & layering
+
+- Keep API and service code separated from UI code.
+- Never hardcode mock data inside UI components; use dedicated seed or mock files.
+
+## Copy & tone
+
+- Keep copy concise, clear, and healthcare-appropriate.

@@ -1,0 +1,31 @@
+/**
+ * Warm neutral surfaces + restrained teal accent (RGB for Tailwind @theme alpha).
+ * Spacing follows a 4px grid: 3=12px, 4=16px, 5=20px, 6=24px, 8=32px, 10=40px, 12=48px, 16=64px.
+ */
+
+:root {
+  --rgb-page: 252 250 247;
+  --rgb-elevated: 255 255 254;
+  --rgb-card: 255 255 255;
+  --rgb-fg: 30 28 26;
+  --rgb-muted: 108 103 96;
+  --rgb-border: 234 231 225;
+  --rgb-border-strong: 218 214 206;
+  /* Teal accent — clinical, not neon */
+  --rgb-accent: 18 112 106;
+  --rgb-accent-fg: 255 255 255;
+  --rgb-ring: 22 120 114;
+}
+
+.dark {
+  --rgb-page: 26 25 24;
+  --rgb-elevated: 32 31 29;
+  --rgb-card: 38 36 34;
+  --rgb-fg: 247 245 242;
+  --rgb-muted: 156 150 140;
+  --rgb-border: 58 55 51;
+  --rgb-border-strong: 72 68 63;
+  --rgb-accent: 52 158 148;
+  --rgb-accent-fg: 12 18 18;
+  --rgb-ring: 72 168 158;
+}

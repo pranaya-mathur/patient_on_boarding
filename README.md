@@ -1,31 +1,42 @@
-# Patient On-Boarding (MVP scaffold)
+# Patient On-Boarding (MVP)
 
-Next.js (App Router) + TypeScript + Tailwind v4 + Prisma (PostgreSQL) + FastAPI (AI backend). This repo is now split into:
+A premium Next.js 14 + FastAPI healthcare patient onboarding system featuring AI-powered eligibility, OCR, and a smart intake assistant.
 
-- `src/` web app scaffold
-- `backend/` AI services for patient access automation
+## Features
+- **AI Intake Assistant**: Real-time patient support with medical guardrails.
+- **Automated Eligibility**: Smart verification via Groq LLaMA 3.
+- **Insurance OCR**: Vision-based card parsing (GPT-4o / Groq LLaVA).
+- **Self Check-in**: Secure, token-based arrival confirmation.
+- **Local-First**: No cloud dependencies required for development (SQLite + Local Storage).
 
-## Scripts
+## Quick Start (Main App)
 
-| Command | Purpose |
-|---------|---------|
-| `npm run dev` | Local dev server |
-| `npm run build` | Production build |
-| `npm run db:generate` | Generate Prisma Client |
-| `npm run db:push` | Push schema to a database (dev) |
-| `npm run db:seed` | Run seed entrypoint |
+1. **Clone & Install**:
+   ```bash
+   npm install
+   ```
 
-Copy `.env.example` → `.env` and set `DATABASE_URL` before `db:push` / `db:seed`.
+2. **Environment Setup**:
+   ```bash
+   cp .env.example .env
+   # Edit .env and add your GROQ_API_KEY
+   ```
 
-## AI backend (FastAPI + LangChain)
+3. **Database Initialization (SQLite)**:
+   ```bash
+   npx prisma db push
+   npx prisma db seed
+   ```
 
-The `backend/` service implements:
+4. **Run Development Server**:
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:3000/intake/demo-token](http://localhost:3000/intake/demo-token) to test.
 
-- Insurance card OCR parsing using OpenAI vision models
-- Eligibility reasoning using Groq models through LangChain
-- Patient communication chatbot using Groq through LangChain
+## AI Backend (FastAPI)
 
-Quick start:
+The `backend/` directory contains supplementary Python services for specialized AI reasoning.
 
 ```bash
 cd backend
@@ -33,11 +44,20 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-uvicorn app.main:app --reload --port 8001
+uvicorn app.main:app --reload --port 8000
 ```
 
-Then open `http://localhost:8001/docs` for interactive API docs.
+## Folder Map
+- `src/app`: Next.js App Router (APIs and Pages)
+- `src/components`: UI components (Radix + Tailwind 4)
+- `src/services`: Adapter-based business logic (Eligibility, OCR, Chat)
+- `src/lib`: Core utilities and storage adapters
+- `backend/`: FastAPI Python services
+- `uploads/`: Local directory for insurance card storage (auto-created)
 
-## Folder map
-
-See `docs/ARCHITECTURE.md` for a short tour of `app/`, `components/`, `lib/`, `server/`, `services/`, and `prisma/`.
+## Technology Stack
+- **Frontend**: Next.js 14, Tailwind CSS 4, React Hook Form, Zod
+- **Backend**: Next.js Route Handlers, FastAPI
+- **Database**: Prisma (SQLite for local dev)
+- **AI**: LangChain, Groq, OpenAI
+- **Auth**: NextAuth.js v5 (Auth.js)

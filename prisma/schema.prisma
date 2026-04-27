@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -48,7 +48,7 @@ model Patient {
   legalFirstName  String
   legalLastName   String
   preferredName   String?
-  dateOfBirth     DateTime? @db.Date
+  dateOfBirth     DateTime?
   legalSex        LegalSex?
 
   mobilePhone String
@@ -57,7 +57,7 @@ model Patient {
   addressLine1 String
   addressLine2 String?
   city         String
-  state        String @db.VarChar(2)
+  state        String
   zipCode      String
 
   preferredLanguage PreferredLanguage @default(en)
@@ -150,7 +150,7 @@ model InsuranceCard {
   ocrStatus       OcrStatus @default(PENDING)
   ocrProviderKey  String? /// e.g. "mock" — swap for real vendor id
   ocrResponse     Json? /// Raw provider / mock OCR output for replay & support
-  ocrErrorMessage String? @db.Text
+  ocrErrorMessage String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -187,12 +187,12 @@ model EligibilityCheck {
   responsePayload Json?
 
   /// One-line summary for queues (e.g. "Active PPO — $25 copay (mock)")
-  summaryLine String? @db.Text
+  summaryLine String?
 
   completedAt DateTime?
 
   /// Manual review path (staff-facing)
-  reviewNote            String?   @db.Text
+  reviewNote            String?
   reviewedAt            DateTime?
   reviewedByStaffUserId String?
   reviewedBy            StaffUser? @relation("EligibilityReviewedBy", fields: [reviewedByStaffUserId], references: [id], onDelete: SetNull)
@@ -231,7 +231,7 @@ model CommunicationLog {
   scheduledFor DateTime?
   sentAt       DateTime?
 
-  errorMessage String? @db.Text
+  errorMessage String?
   metadata     Json? /// Provider message ids, retry counts, etc.
 
   createdAt DateTime @default(now())

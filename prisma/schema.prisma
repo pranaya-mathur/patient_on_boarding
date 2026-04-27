@@ -83,6 +83,9 @@ model Appointment {
   visitSummary          String? /// Short reason / visit type label for staff UI
 
   status AppointmentStatus @default(SCHEDULED)
+  
+  checkinToken          String?   @unique
+  checkinTokenExpiresAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

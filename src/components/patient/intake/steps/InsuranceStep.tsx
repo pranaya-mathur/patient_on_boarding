@@ -23,13 +23,39 @@ import type { IntakeFormValues } from "@/schemas/intake-form";
 
 const inputClass = "h-11 min-h-11 text-[15px] md:text-sm";
 
-export function InsuranceStep() {
+export function InsuranceStep({ token, policyId }: { token: string; policyId?: string }) {
   const {
     register,
     control,
     setValue,
     formState: { errors },
   } = useFormContext<IntakeFormValues>();
+
+  const handleUpload = async (file: File, side: "FRONT" | "BACK") => {
+    if (!policyId) {
+      console.warn("[insurance:upload] No policyId yet, waiting for autosave...");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("side", side);
+    formData.append("policyId", policyId);
+
+    try {
+      const res = await fetch(`/api/intake/${token}/upload-card`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        console.error("[insurance:upload:failed]", data.error);
+      }
+    } catch (err) {
+      console.error("[insurance:upload:error]", err);
+    }
+  };
 
   return (
     <FieldSet className="gap-10">
@@ -149,7 +175,10 @@ export function InsuranceStep() {
               className="sr-only"
               onChange={(e) => {
                 const f = e.target.files?.[0];
-                setValue("insurance.cardFrontFileName", f?.name ?? "", { shouldDirty: true, shouldValidate: true });
+                if (f) {
+                  setValue("insurance.cardFrontFileName", f.name, { shouldDirty: true, shouldValidate: true });
+                  handleUpload(f, "FRONT");
+                }
               }}
             />
           </label>
@@ -173,7 +202,10 @@ export function InsuranceStep() {
               className="sr-only"
               onChange={(e) => {
                 const f = e.target.files?.[0];
-                setValue("insurance.cardBackFileName", f?.name ?? "", { shouldDirty: true, shouldValidate: true });
+                if (f) {
+                  setValue("insurance.cardBackFileName", f.name, { shouldDirty: true, shouldValidate: true });
+                  handleUpload(f, "BACK");
+                }
               }}
             />
           </label>

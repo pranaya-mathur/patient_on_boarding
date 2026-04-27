@@ -29,18 +29,38 @@ export function StaffDashboardClient() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [patients, setPatients] = useState<StaffPatientRow[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
-    const t = window.setTimeout(() => setLoading(false), 650);
-    return () => window.clearTimeout(t);
-  }, []);
+    const fetchPatients = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (filters.intake !== "ALL") params.append("intakeStatus", filters.intake);
+        if (filters.eligibility !== "ALL") params.append("eligibilityStatus", filters.eligibility);
+        if (filters.checkIn !== "ALL") params.append("checkinStatus", filters.checkIn);
+        // Map other filters as needed
 
-  const allRows = STAFF_DASHBOARD_MOCK_PATIENTS;
+        const res = await fetch(`/api/staff/patients?${params.toString()}`);
+        const json = await res.json();
+        if (json.ok) {
+          setPatients(json.data);
+          setTotalCount(json.pagination.total);
+        }
+      } catch (err) {
+        console.error("[dashboard:fetch:error]", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const rowsForCounts = useMemo(
-    () => filterStaffPatients(allRows, { ...filters, exceptionQueue: "ALL" }),
-    [allRows, filters],
-  );
+    fetchPatients();
+  }, [filters]);
+
+  const allRows = patients;
+
+  const rowsForCounts = patients; // Simplified for MVP
 
   const queueCards = useMemo(() => {
     const ids = ["needs_review", "ocr_failed", "reminder_failed", "missing_consent"] as const;
@@ -49,18 +69,33 @@ export function StaffDashboardClient() {
       title: exceptionQueueMeta[id].title,
       description: exceptionQueueMeta[id].description,
       icon: exceptionQueueMeta[id].icon,
-      count: countExceptionQueue(rowsForCounts, id),
+      count: patients.filter(p => {
+        if (id === "needs_review") return p.exceptions.needsReview;
+        if (id === "ocr_failed") return p.exceptions.ocrFailed;
+        if (id === "reminder_failed") return p.exceptions.reminderFailed;
+        if (id === "missing_consent") return p.exceptions.missingConsent;
+        return false;
+      }).length,
     }));
-  }, [rowsForCounts]);
+  }, [patients]);
 
   const filteredRows = useMemo(() => {
-    const list = filterStaffPatients(allRows, filters);
+    let list = patients;
+    if (filters.exceptionQueue !== "ALL") {
+      list = list.filter(p => {
+        if (filters.exceptionQueue === "needs_review") return p.exceptions.needsReview;
+        if (filters.exceptionQueue === "ocr_failed") return p.exceptions.ocrFailed;
+        if (filters.exceptionQueue === "reminder_failed") return p.exceptions.reminderFailed;
+        if (filters.exceptionQueue === "missing_consent") return p.exceptions.missingConsent;
+        return false;
+      });
+    }
     return [...list].sort(sortByAppointment);
-  }, [allRows, filters]);
+  }, [patients, filters.exceptionQueue]);
 
   const selectedPatient = useMemo(
-    () => (selectedId ? allRows.find((r) => r.id === selectedId) ?? null : null),
-    [allRows, selectedId],
+    () => (selectedId ? patients.find((r) => r.id === selectedId) ?? null : null),
+    [patients, selectedId],
   );
 
   const openDrawerFor = (id: string) => {
@@ -93,7 +128,7 @@ export function StaffDashboardClient() {
           <ClipboardList className="size-3.5 shrink-0 text-muted-foreground/80" aria-hidden />
           <span className="tabular-nums">
             <span className="font-semibold text-foreground">{filteredRows.length}</span> shown ·{" "}
-            <span className="font-semibold text-foreground">{allRows.length}</span> total
+            <span className="font-semibold text-foreground">{totalCount}</span> total
           </span>
         </div>
       </div>

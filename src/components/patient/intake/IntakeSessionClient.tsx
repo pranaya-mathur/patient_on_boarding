@@ -36,6 +36,7 @@ export function IntakeSessionClient({ token }: IntakeSessionClientProps) {
   const [step, setStep] = useState(1);
   const [completed, setCompleted] = useState(false);
   const [rootError, setRootError] = useState<string | null>(null);
+  const [policyId, setPolicyId] = useState<string | undefined>(undefined);
   const [isNavigating, startTransition] = useTransition();
   const autosaveTimer = useRef<number | undefined>(undefined);
 
@@ -47,10 +48,23 @@ export function IntakeSessionClient({ token }: IntakeSessionClientProps) {
   useEffect(() => {
     const sub = form.watch((value) => {
       window.clearTimeout(autosaveTimer.current);
-      autosaveTimer.current = window.setTimeout(() => {
-        // Wire to PATCH /api/intake/[token] when API exists
-        if (process.env.NODE_ENV === "development") {
-          console.debug("[intake:autosave:ready]", { token, step, keys: Object.keys(value as object).length });
+      autosaveTimer.current = window.setTimeout(async () => {
+        try {
+          const res = await fetch(`/api/intake/${token}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(value),
+          });
+          
+          if (res.ok) {
+            const data = await res.json();
+            if (data.policyId) setPolicyId(data.policyId);
+          } else {
+            const data = await res.json();
+            console.error("[intake:autosave:failed]", data.error);
+          }
+        } catch (err) {
+          console.error("[intake:autosave:error]", err);
         }
       }, 750);
     });
@@ -58,7 +72,7 @@ export function IntakeSessionClient({ token }: IntakeSessionClientProps) {
       sub.unsubscribe();
       window.clearTimeout(autosaveTimer.current);
     };
-  }, [form, token, step]);
+  }, [form, token]);
 
   const goBack = () => {
     if (completed) return;
@@ -108,7 +122,19 @@ export function IntakeSessionClient({ token }: IntakeSessionClientProps) {
             applyZodIssuesToForm(form.setError, r.error, "review");
             return;
           }
-          await delay(420);
+
+          const res = await fetch(`/api/intake/${token}/submit`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(form.getValues()),
+          });
+
+          if (!res.ok) {
+            const data = await res.json();
+            setRootError(data.error || "Submission failed. Please try again.");
+            return;
+          }
+
           setCompleted(true);
         }
       } catch {
@@ -129,14 +155,6 @@ export function IntakeSessionClient({ token }: IntakeSessionClientProps) {
               <p className="font-serif text-lg font-semibold tracking-tight text-foreground sm:text-xl">Pre-visit intake</p>
               <p className="text-sm leading-snug text-muted-foreground">Secure link · no login required</p>
             </div>
-            <span
-              className={cn(
-                "shrink-0 rounded-md border border-border/90 bg-muted/30 px-2.5 py-1",
-                "text-[11px] font-medium uppercase tracking-wide text-muted-foreground",
-              )}
-            >
-              Demo
-            </span>
           </div>
           <div className="mx-auto max-w-xl px-5 pb-5 pt-1 sm:px-6 sm:pb-6">
             <IntakeProgressHeader currentStep={completed ? TOTAL_STEPS : step} />
@@ -182,7 +200,7 @@ export function IntakeSessionClient({ token }: IntakeSessionClientProps) {
             <div className="space-y-10">
               {step === 1 ? <WelcomeStep token={token} /> : null}
               {step === 2 ? <DemographicsStep /> : null}
-              {step === 3 ? <InsuranceStep /> : null}
+              {step === 3 ? <InsuranceStep token={token} policyId={policyId} /> : null}
               {step === 4 ? <ReviewStep /> : null}
             </div>
           )}

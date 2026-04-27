@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Mail, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { ExceptionChip, OperationsStatusBadge } from "@/components/staff/OperationsStatusBadge";
@@ -41,6 +42,41 @@ type StaffPatientDetailDrawerProps = {
 };
 
 export function StaffPatientDetailDrawer({ patient, open, onOpenChange }: StaffPatientDetailDrawerProps) {
+  const [fullData, setFullData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setLoading(true);
+      fetch(`/api/staff/patients/${patient.id}`)
+        .then(res => res.json())
+        .then(json => {
+          if (json.ok) setFullData(json.data);
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [open, patient.id]);
+
+  const handleAction = async (action: string) => {
+    setActionLoading(action);
+    try {
+      const res = await fetch(`/api/staff/patients/${patient.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (res.ok) {
+        // Refresh data
+        const refreshRes = await fetch(`/api/staff/patients/${patient.id}`);
+        const refreshJson = await refreshRes.json();
+        if (refreshJson.ok) setFullData(refreshJson.data);
+      }
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const flags: { key: string; label: string }[] = [];
   if (patient.exceptions.needsReview) flags.push({ key: "review", label: "Needs review" });
   if (patient.exceptions.ocrFailed) flags.push({ key: "ocr", label: "OCR failed" });
@@ -82,9 +118,6 @@ export function StaffPatientDetailDrawer({ patient, open, onOpenChange }: StaffP
                     <ExceptionChip key={f.key} label={f.label} />
                   ))}
                 </div>
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  Staff actions here will write to the audit log when wired to the API layer.
-                </p>
               </section>
             ) : null}
 
@@ -113,35 +146,61 @@ export function StaffPatientDetailDrawer({ patient, open, onOpenChange }: StaffP
 
             <section className="space-y-2">
               <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Activity</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex gap-2">
-                  <Smartphone className="mt-0.5 size-4 shrink-0 opacity-80" aria-hidden />
-                  <span>Reminder channel and delivery logs will appear here.</span>
-                </li>
-                <li className="flex gap-2">
-                  <Mail className="mt-0.5 size-4 shrink-0 opacity-80" aria-hidden />
-                  <span>Email confirmations and intake edits will be listed chronologically.</span>
-                </li>
-              </ul>
+              {loading ? (
+                <p className="text-sm text-muted-foreground">Loading activity log...</p>
+              ) : fullData?.communicationLogs?.length > 0 ? (
+                <ul className="space-y-3 text-sm">
+                  {fullData.communicationLogs.map((log: any) => (
+                    <li key={log.id} className="flex gap-3">
+                      {log.channel === "SMS" ? (
+                        <Smartphone className="mt-0.5 size-4 shrink-0 opacity-80 text-primary" />
+                      ) : (
+                        <Mail className="mt-0.5 size-4 shrink-0 opacity-80 text-primary" />
+                      )}
+                      <div>
+                        <p className="font-medium text-foreground">{log.templateKey}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {log.status} · {new Date(log.sentAt || log.scheduledFor).toLocaleString()}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">No recent activity.</p>
+              )}
             </section>
           </div>
         </ScrollArea>
 
         <SheetFooter className="shrink-0 flex-col gap-2 border-t border-border/70 bg-muted/20 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
-          <Button type="button" variant="outline" size="sm" disabled>
-            Mark reviewed
+          <Button 
+            type="button" 
+            variant="outline" 
+            size="sm" 
+            onClick={() => handleAction("mark_eligibility_verified")}
+            disabled={actionLoading === "mark_eligibility_verified" || patient.eligibilityStatus === "VERIFIED"}
+          >
+            {actionLoading === "mark_eligibility_verified" ? "Verifying..." : "Mark verified"}
           </Button>
-          <Button type="button" variant="outline" size="sm" disabled>
-            Resend reminder
+          <Button 
+            type="button" 
+            variant="outline" 
+            size="sm" 
+            onClick={() => handleAction("resend_intake")}
+            disabled={actionLoading === "resend_intake"}
+          >
+            {actionLoading === "resend_intake" ? "Resending..." : "Resend intake"}
           </Button>
           <Link
-            href="/intake/demo-token"
+            href={`/intake/${fullData?.intakeToken || "demo"}`}
+            target="_blank"
             className={cn(
               buttonVariants({ variant: "default", size: "sm" }),
               "inline-flex w-full items-center justify-center sm:w-auto",
             )}
           >
-            Preview intake (demo)
+            View intake session
           </Link>
         </SheetFooter>
       </SheetContent>

@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "test:staff-auth": "node scripts/test-staff-credentials.mjs",
+    "test:staff-auth:ci": "bash scripts/run-staff-auth-test.sh"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",

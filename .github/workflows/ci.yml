@@ -34,3 +34,10 @@ jobs:
           DATABASE_URL: "file:./prisma/ci.db"
           NEXTAUTH_SECRET: "ci-build-secret-must-be-32-chars-min!!"
           GROQ_API_KEY: "ci-placeholder-not-used-at-build"
+
+      - name: Staff auth (integration)
+        run: npm run test:staff-auth:ci
+        env:
+          SKIP_BUILD: "1"
+          NEXTAUTH_SECRET: "ci-build-secret-must-be-32-chars-min!!"
+          GROQ_API_KEY: "ci-placeholder-not-used-at-build"

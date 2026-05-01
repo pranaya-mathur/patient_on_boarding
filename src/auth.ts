@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   providers: [
     Credentials({
       name: "Staff Login",
@@ -18,9 +19,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const email = credentials.email as string;
+        const emailRaw = (credentials.email as string).trim();
+        const email = emailRaw.toLowerCase();
 
-        // Check if user exists
+        // Check if user exists (emails are stored lowercase from seed / create)
         let user = await prisma.staffUser.findUnique({
           where: { email },
         });
@@ -30,11 +32,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const allowedEmails = process.env.STAFF_ALLOWED_EMAILS?.split(",").map((e) =>
             e.trim().toLowerCase()
           );
-          if (allowedEmails?.includes(email.toLowerCase())) {
+          if (allowedEmails?.includes(email)) {
             user = await prisma.staffUser.create({
               data: {
-                email: email.toLowerCase(),
-                name: email.split("@")[0], // Default name from email
+                email,
+                name: email.split("@")[0] || "Staff",
               },
             });
           }

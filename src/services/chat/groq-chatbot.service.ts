@@ -27,7 +27,7 @@ export class GroqChatbotService implements ChatbotService {
 
       const model = new ChatGroq({ 
         apiKey: process.env.GROQ_API_KEY, 
-        model: "llama3-70b-8192",
+        model: "llama-3.3-70b-versatile",
       });
 
       // Task 2: Build message array with capped history
@@ -56,8 +56,19 @@ export class GroqChatbotService implements ChatbotService {
         content = res.content;
       } else if (Array.isArray(res.content)) {
         // Extract first text block if present
-        const textBlock = res.content.find(b => typeof b === "string" || (typeof b === "object" && "text" in b));
-        content = typeof textBlock === "string" ? textBlock : (textBlock as any)?.text || "";
+        const textBlock = res.content.find(
+          (b) => typeof b === "string" || (typeof b === "object" && b !== null && "text" in b)
+        );
+        if (typeof textBlock === "string") {
+          content = textBlock;
+        } else if (
+          textBlock &&
+          typeof textBlock === "object" &&
+          "text" in textBlock &&
+          typeof (textBlock as { text: unknown }).text === "string"
+        ) {
+          content = (textBlock as { text: string }).text;
+        }
       }
 
       // Task 3: Sanitize (strip HTML/scripts)

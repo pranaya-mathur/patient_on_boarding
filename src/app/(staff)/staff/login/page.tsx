@@ -31,10 +31,10 @@ export default function LoginPage() {
       if (result?.error) {
         setError("Invalid email or password. Please try again.");
       } else {
-        router.push("/staff/patients"); // Default landing page for staff
+        router.push("/staff");
         router.refresh();
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred. Please try again later.");
     } finally {
       setIsLoading(false);

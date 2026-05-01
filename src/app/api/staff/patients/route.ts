@@ -1,7 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { EligibilityStatus, IntakeStatus, Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
+
+const INTAKE_STATUSES: IntakeStatus[] = ["NOT_STARTED", "IN_PROGRESS", "SUBMITTED", "ABANDONED"];
+const ELIGIBILITY_STATUSES: EligibilityStatus[] = [
+  "NOT_RUN",
+  "PENDING",
+  "VERIFIED",
+  "NEEDS_REVIEW",
+  "FAILED",
+];
+
+function parseIntakeStatus(value: string | null): IntakeStatus | undefined {
+  if (!value) return undefined;
+  return INTAKE_STATUSES.includes(value as IntakeStatus) ? (value as IntakeStatus) : undefined;
+}
+
+function parseEligibilityStatus(value: string | null): EligibilityStatus | undefined {
+  if (!value) return undefined;
+  return ELIGIBILITY_STATUSES.includes(value as EligibilityStatus)
+    ? (value as EligibilityStatus)
+    : undefined;
+}
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -23,24 +44,26 @@ export async function GET(req: NextRequest) {
     // Build filters
     const where: Prisma.PatientWhereInput = {};
 
-    if (intakeStatus) {
-      where.intakeStatus = intakeStatus as any;
+    const parsedIntake = parseIntakeStatus(intakeStatus);
+    if (parsedIntake) {
+      where.intakeStatus = parsedIntake;
     }
 
     if (search) {
       where.OR = [
-        { legalFirstName: { contains: search, mode: "insensitive" } },
-        { legalLastName: { contains: search, mode: "insensitive" } },
-        { email: { contains: search, mode: "insensitive" } },
+        { legalFirstName: { contains: search } },
+        { legalLastName: { contains: search } },
+        { email: { contains: search } },
       ];
     }
 
-    if (eligibilityStatus) {
+    const parsedEligibility = parseEligibilityStatus(eligibilityStatus);
+    if (parsedEligibility) {
       where.insurancePolicies = {
         some: {
           eligibilityChecks: {
             some: {
-              status: eligibilityStatus as any,
+              status: parsedEligibility,
             },
           },
         },

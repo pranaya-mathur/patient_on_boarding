@@ -9,6 +9,7 @@ export type {
   ReminderTemplateKey,
 } from "./types";
 export { MockReminderService, createMockReminderService } from "./mock-reminder.service";
+import { prisma } from "@/lib/prisma";
 
 /**
  * Schedule visit reminders for a patient.

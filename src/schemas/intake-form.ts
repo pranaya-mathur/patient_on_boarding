@@ -84,6 +84,55 @@ export const intakeFormSchema = z.object({
   review: reviewStepSchema,
 });
 
+/**
+ * PATCH autosave — intentionally loose so in-progress values (empty strings, partial email/phone)
+ * do not 400 while the user types. Final validation stays on `demographicsStepSchema` /
+ * `insuranceStepSchema` at submit.
+ */
+export const demographicsAutosaveSchema = z.object({
+  legalFirstName: z.string().max(120).optional(),
+  legalLastName: z.string().max(120).optional(),
+  preferredName: z.union([z.string().max(80), z.literal("")]).optional(),
+  dateOfBirth: z
+    .string()
+    .optional()
+    .refine((v) => v === undefined || v === "" || /^\d{4}-\d{2}-\d{2}$/.test(v), {
+      message: "Use YYYY-MM-DD",
+    }),
+  mobilePhone: z.string().max(40).optional(),
+  email: z.string().max(320).optional(),
+  addressLine1: z.string().max(200).optional(),
+  addressLine2: z.union([z.string().max(120), z.literal("")]).optional(),
+  city: z.string().max(120).optional(),
+  state: z.string().max(2).optional(),
+  zipCode: z
+    .string()
+    .optional()
+    .refine((v) => v === undefined || v === "" || /^\d{5}(-\d{4})?$/.test(v), {
+      message: "Enter a valid ZIP code",
+    }),
+  legalSex: z
+    .string()
+    .optional()
+    .refine((v) => v === undefined || v === "" || ["F", "M", "X", "U"].includes(v), {
+      message: "Select a valid option",
+    }),
+  preferredLanguage: z.enum(["en", "es", "other"]).optional(),
+});
+
+export const insuranceAutosaveSchema = z.object({
+  primaryPayerId: z.enum(payerIds).optional(),
+  memberId: z.string().max(32).optional(),
+  groupNumber: z.union([z.string().max(32), z.literal("")]).optional(),
+  subscriberRelationship: z.enum(["SELF", "SPOUSE", "CHILD", "OTHER"]).optional(),
+  cardFrontFileName: z.string().max(500).optional(),
+  cardBackFileName: z.string().max(500).optional(),
+  cardFrontId: z.string().optional(),
+  cardBackId: z.string().optional(),
+  cardFrontStatus: z.enum(["IDLE", "UPLOADING", "SUCCESS", "ERROR"]).optional(),
+  cardBackStatus: z.enum(["IDLE", "UPLOADING", "SUCCESS", "ERROR"]).optional(),
+});
+
 export type IntakeFormValues = z.infer<typeof intakeFormSchema>;
 
 /** Draft defaults — `legalSex` starts empty until the patient selects an option. */

@@ -41,8 +41,20 @@ type StaffPatientDetailDrawerProps = {
   onOpenChange: (open: boolean) => void;
 };
 
+type StaffPatientDetailPayload = {
+  intakeToken?: string;
+  communicationLogs?: Array<{
+    id: string;
+    channel: string;
+    templateKey: string;
+    status: string;
+    sentAt: string | null;
+    scheduledFor: string | null;
+  }>;
+};
+
 export function StaffPatientDetailDrawer({ patient, open, onOpenChange }: StaffPatientDetailDrawerProps) {
-  const [fullData, setFullData] = useState<any>(null);
+  const [fullData, setFullData] = useState<StaffPatientDetailPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -148,9 +160,11 @@ export function StaffPatientDetailDrawer({ patient, open, onOpenChange }: StaffP
               <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Activity</h3>
               {loading ? (
                 <p className="text-sm text-muted-foreground">Loading activity log...</p>
-              ) : fullData?.communicationLogs?.length > 0 ? (
+              ) : fullData?.communicationLogs && fullData.communicationLogs.length > 0 ? (
                 <ul className="space-y-3 text-sm">
-                  {fullData.communicationLogs.map((log: any) => (
+                  {fullData.communicationLogs.map((log) => {
+                    const ts = log.sentAt ?? log.scheduledFor;
+                    return (
                     <li key={log.id} className="flex gap-3">
                       {log.channel === "SMS" ? (
                         <Smartphone className="mt-0.5 size-4 shrink-0 opacity-80 text-primary" />
@@ -160,11 +174,12 @@ export function StaffPatientDetailDrawer({ patient, open, onOpenChange }: StaffP
                       <div>
                         <p className="font-medium text-foreground">{log.templateKey}</p>
                         <p className="text-xs text-muted-foreground">
-                          {log.status} · {new Date(log.sentAt || log.scheduledFor).toLocaleString()}
+                          {log.status} · {ts ? new Date(ts).toLocaleString() : "—"}
                         </p>
                       </div>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               ) : (
                 <p className="text-sm text-muted-foreground">No recent activity.</p>
@@ -193,12 +208,15 @@ export function StaffPatientDetailDrawer({ patient, open, onOpenChange }: StaffP
             {actionLoading === "resend_intake" ? "Resending..." : "Resend intake"}
           </Button>
           <Link
-            href={`/intake/${fullData?.intakeToken || "demo"}`}
+            href={fullData?.intakeToken ? `/intake/${fullData.intakeToken}` : "#"}
             target="_blank"
+            rel="noreferrer"
             className={cn(
               buttonVariants({ variant: "default", size: "sm" }),
               "inline-flex w-full items-center justify-center sm:w-auto",
+              !fullData?.intakeToken && "pointer-events-none opacity-50",
             )}
+            aria-disabled={!fullData?.intakeToken}
           >
             View intake session
           </Link>

@@ -41,18 +41,6 @@ export function IntakeSessionClient({ token }: IntakeSessionClientProps) {
   const [isNavigating, startTransition] = useTransition();
   const autosaveTimer = useRef<number | undefined>(undefined);
 
-  const autosave = async (value: IntakeFormValues) => {
-    try {
-      await fetch(`/api/intake/${token}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ demographics: value.demographics, insurance: value.insurance }),
-      });
-    } catch (err) {
-      // Silently ignore autosave errors as per requirements
-    }
-  };
-
   const form = useForm<IntakeFormValues>({
     defaultValues: intakeDefaultValues,
     shouldFocusError: true,
@@ -66,7 +54,10 @@ export function IntakeSessionClient({ token }: IntakeSessionClientProps) {
           const res = await fetch(`/api/intake/${token}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(value),
+            body: JSON.stringify({
+              demographics: value.demographics,
+              insurance: value.insurance,
+            }),
           });
           
           if (res.ok) {
@@ -76,8 +67,8 @@ export function IntakeSessionClient({ token }: IntakeSessionClientProps) {
             const data = await res.json();
             console.error("[intake:autosave:failed]", data.error);
           }
-        } catch (err) {
-          console.error("[intake:autosave:error]", err);
+        } catch (e) {
+          console.error("[intake:autosave:error]", e);
         }
       }, 750);
     });

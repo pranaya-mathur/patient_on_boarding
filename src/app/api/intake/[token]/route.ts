@@ -1,19 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { LegalSex, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { demographicsStepSchema, insuranceStepSchema } from "@/schemas/intake-form";
+import {
+  demographicsAutosaveSchema,
+  insuranceAutosaveSchema,
+} from "@/schemas/intake-form";
 import { z } from "zod";
 
 const autosaveSchema = z.object({
-  demographics: demographicsStepSchema.partial().optional(),
-  insurance: insuranceStepSchema.partial().optional(),
+  demographics: demographicsAutosaveSchema.optional(),
+  insurance: insuranceAutosaveSchema.optional(),
 });
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
-    const { token } = params;
+    const { token } = await params;
     const body = await req.json();
 
     // Validate partial input
@@ -49,12 +53,16 @@ export async function PATCH(
     }
 
     // Prepare update data for Patient
-    const patientUpdate: any = {};
+    let patientUpdate: Prisma.PatientUpdateInput = {};
     if (demographics) {
-      Object.assign(patientUpdate, demographics);
-      if (demographics.dateOfBirth) {
-        patientUpdate.dateOfBirth = new Date(demographics.dateOfBirth);
-      }
+      const { dateOfBirth, legalSex, ...demographicsRest } = demographics;
+      patientUpdate = {
+        ...demographicsRest,
+        ...(dateOfBirth && dateOfBirth !== ""
+          ? { dateOfBirth: new Date(dateOfBirth) }
+          : {}),
+        ...(legalSex && legalSex !== "" ? { legalSex: legalSex as LegalSex } : {}),
+      };
     }
 
     // Set status to IN_PROGRESS if NOT_STARTED
@@ -87,7 +95,7 @@ export async function PATCH(
 
         // Filter out undefined values
         const cleanPolicyData = Object.fromEntries(
-          Object.entries(policyData).filter(([_, v]) => v !== undefined)
+          Object.entries(policyData).filter(([, v]) => v !== undefined)
         );
 
         if (primaryPolicy) {

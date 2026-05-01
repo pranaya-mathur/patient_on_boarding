@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { patientId: string } }
+  { params }: { params: Promise<{ patientId: string }> }
 ) {
   const session = await auth();
   if (!session) {
@@ -12,7 +12,7 @@ export async function GET(
   }
 
   try {
-    const { patientId } = params;
+    const { patientId } = await params;
 
     const patient = await prisma.patient.findUnique({
       where: { id: patientId },
@@ -51,7 +51,7 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { patientId: string } }
+  { params }: { params: Promise<{ patientId: string }> }
 ) {
   const session = await auth();
   if (!session) {
@@ -59,7 +59,7 @@ export async function PATCH(
   }
 
   try {
-    const { patientId } = params;
+    const { patientId } = await params;
     const { action, note } = await req.json();
 
     const patient = await prisma.patient.findUnique({
@@ -95,7 +95,7 @@ export async function PATCH(
 
         await tx.auditLog.create({
           data: {
-            staffUserId: (session.user as any).id,
+            staffUserId: session.user.id,
             action: "COMMUNICATION_RESENT",
             entityType: "Patient",
             entityId: patientId,
@@ -118,13 +118,13 @@ export async function PATCH(
           data: {
             status: "VERIFIED",
             reviewedAt: new Date(),
-            reviewedByStaffUserId: (session.user as any).id,
+            reviewedByStaffUserId: session.user.id,
           },
         });
 
         await tx.auditLog.create({
           data: {
-            staffUserId: (session.user as any).id,
+            staffUserId: session.user.id,
             action: "ELIGIBILITY_STATUS_CHANGED",
             entityType: "EligibilityCheck",
             entityId: latestCheck.id,
@@ -149,7 +149,7 @@ export async function PATCH(
 
         await tx.auditLog.create({
           data: {
-            staffUserId: (session.user as any).id,
+            staffUserId: session.user.id,
             action: "ELIGIBILITY_REVIEW_NOTE_ADDED",
             entityType: "EligibilityCheck",
             entityId: latestCheck.id,

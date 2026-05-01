@@ -7,10 +7,10 @@ const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
-    const { token } = params;
+    const { token } = await params;
 
     // Validate intake token against DB
     const patient = await prisma.patient.findUnique({

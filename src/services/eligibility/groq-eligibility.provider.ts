@@ -24,7 +24,7 @@ const SYSTEM_PROMPT = `You are an insurance eligibility verification assistant. 
 export class GroqEligibilityVerificationProvider implements EligibilityVerificationProvider {
   readonly providerKey = "groq_langchain";
 
-  async verifyEligibility(request: EligibilityVerificationRequest): Promise<EligibilityVerificationResult> {
+  async verify(request: EligibilityVerificationRequest): Promise<EligibilityVerificationResult> {
     try {
       if (!process.env.GROQ_API_KEY) {
         throw new Error("Missing GROQ_API_KEY");
@@ -32,7 +32,7 @@ export class GroqEligibilityVerificationProvider implements EligibilityVerificat
 
       const model = new ChatGroq({ 
         apiKey: process.env.GROQ_API_KEY, 
-        model: "llama3-70b-8192" 
+        model: "llama-3.3-70b-versatile" 
       });
 
       const res = await model.invoke([
@@ -45,14 +45,17 @@ export class GroqEligibilityVerificationProvider implements EligibilityVerificat
       const fields = JSON.parse(jsonStr);
 
       return successResult({
-        status: fields.outcome,
-        summaryLine: fields.summary,
-        payerPayerId: request.payerKey,
-        planName: fields.planName,
-        copayCents: fields.copayCents,
-        effectiveDate: fields.effectiveDate ? new Date(fields.effectiveDate) : undefined,
-        terminationDate: fields.terminationDate ? new Date(fields.terminationDate) : undefined,
-        rawResponse: raw,
+        providerKey: this.providerKey,
+        outcome: fields.outcome,
+        summary: fields.summary,
+        normalized: {
+          outcome: fields.outcome,
+          planName: fields.planName,
+          copayCents: fields.copayCents,
+          effectiveDate: fields.effectiveDate,
+          terminationDate: fields.terminationDate,
+        },
+        rawResponse: { raw },
       });
     } catch (error) {
       console.error("[eligibility:groq-provider:error]", error);

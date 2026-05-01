@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { LegalSex } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { intakeFormSchema } from "@/schemas/intake-form";
 import { runEligibilityCheck } from "@/services/eligibility";
@@ -6,10 +7,10 @@ import { scheduleReminders } from "@/services/reminders";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
-    const { token } = params;
+    const { token } = await params;
     const body = await req.json();
 
     // Validate full input
@@ -53,6 +54,7 @@ export async function POST(
         where: { id: patient.id },
         data: {
           ...demographics,
+          legalSex: demographics.legalSex as LegalSex,
           dateOfBirth: new Date(demographics.dateOfBirth),
           intakeStatus: "SUBMITTED",
         },

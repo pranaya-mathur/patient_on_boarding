@@ -1,6 +1,6 @@
 # Patient On-Boarding (MVP)
 
-A premium Next.js 14 + FastAPI healthcare patient onboarding system featuring AI-powered eligibility, OCR, and a smart intake assistant.
+A premium Next.js 15 + FastAPI healthcare patient onboarding system featuring AI-powered eligibility, OCR, and a smart intake assistant.
 
 ## Features
 - **AI Intake Assistant**: Real-time patient support with medical guardrails.
@@ -56,7 +56,7 @@ uvicorn app.main:app --reload --port 8000
 - `uploads/`: Local directory for insurance card storage (auto-created)
 
 ## Technology Stack
-- **Frontend**: Next.js 14, Tailwind CSS 4, React Hook Form, Zod
+- **Frontend**: Next.js 15, Tailwind CSS 4, React Hook Form, Zod
 - **Backend**: Next.js Route Handlers, FastAPI
 - **Database**: Prisma (SQLite for local dev)
 - **AI**: LangChain, Groq, OpenAI

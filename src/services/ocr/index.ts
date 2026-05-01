@@ -9,6 +9,7 @@ export type {
 export { MockOcrProvider, createMockOcrProvider } from "./mock-ocr.provider";
 export { AiOcrProvider, createAiOcrProvider } from "./ai-ocr.provider";
 
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createMockOcrProvider } from "./mock-ocr.provider";
 
@@ -45,7 +46,7 @@ export async function triggerOcr(cardId: string): Promise<void> {
           where: { id: cardId },
           data: {
             ocrStatus: "COMPLETE",
-            ocrResponse: result.data as any,
+            ocrResponse: result.data as unknown as Prisma.InputJsonValue,
           },
         }),
         // Update policy if fields are empty

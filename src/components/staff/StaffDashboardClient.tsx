@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ClipboardList, Inbox } from "lucide-react";
-import { STAFF_DASHBOARD_MOCK_PATIENTS } from "@/data/staff-dashboard-mock";
-import { countExceptionQueue, filterStaffPatients } from "@/lib/staff-dashboard-filter";
 import { cn } from "@/lib/utils";
 import type { StaffDashboardFilters, StaffPatientRow } from "@/types/staff-dashboard";
 import { StaffDashboardFilters as StaffFilters } from "@/components/staff/StaffDashboardFilters";
@@ -57,10 +55,6 @@ export function StaffDashboardClient() {
 
     fetchPatients();
   }, [filters]);
-
-  const allRows = patients;
-
-  const rowsForCounts = patients; // Simplified for MVP
 
   const queueCards = useMemo(() => {
     const ids = ["needs_review", "ocr_failed", "reminder_failed", "missing_consent"] as const;

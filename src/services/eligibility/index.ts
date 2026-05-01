@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { MockEligibilityVerificationProvider } from "./mock-eligibility.provider";
 import { GroqEligibilityVerificationProvider } from "./groq-eligibility.provider";
@@ -5,6 +6,12 @@ import type {
   EligibilityVerificationProvider, 
   EligibilityVerificationRequest 
 } from "./types";
+export type { 
+  EligibilityVerificationProvider, 
+  EligibilityVerificationRequest 
+};
+export { createAiEligibilityVerificationProvider } from "./ai-eligibility.provider";
+export { createMockEligibilityVerificationProvider } from "./mock-eligibility.provider";
 
 export function createEligibilityProvider(): EligibilityVerificationProvider {
   const provider = process.env.ELIGIBILITY_PROVIDER;
@@ -42,8 +49,8 @@ export async function runEligibilityCheck(policyId: string): Promise<void> {
           memberId: policy.memberId,
           payerKey: policy.payerKey,
           patientId: policy.patientId,
-          subscriberName: policy.subscriberName,
-        } as any,
+          subscriberName: policy.subscriberName ?? null,
+        } satisfies Prisma.InputJsonObject,
       },
     });
 
@@ -56,23 +63,21 @@ export async function runEligibilityCheck(policyId: string): Promise<void> {
       },
     });
 
-    const result = await provider.verifyEligibility({
-      memberId: policy.memberId || "",
+    const result = await provider.verify({
       payerKey: policy.payerKey || "",
-      patientDob: policy.patient.dateOfBirth?.toISOString().slice(0, 10) || "",
-      subscriberName: policy.subscriberName || "",
+      memberId: policy.memberId || "",
       correlationId: check.id,
     });
 
     let finalStatus: "VERIFIED" | "NEEDS_REVIEW" | "FAILED" = "FAILED";
     let summaryLine = "Unknown error";
-    let responsePayload: any = null;
+    let responsePayload: Prisma.InputJsonValue | undefined;
     let reviewNote: string | null = null;
 
     if (result.ok) {
-      finalStatus = result.data.status as "VERIFIED" | "NEEDS_REVIEW" | "FAILED";
-      summaryLine = result.data.summaryLine;
-      responsePayload = result.data as any;
+      finalStatus = result.data.outcome;
+      summaryLine = result.data.summary;
+      responsePayload = result.data as unknown as Prisma.InputJsonValue;
       
       if (finalStatus === "NEEDS_REVIEW" || finalStatus === "FAILED") {
         reviewNote = "System-generated: Result requires staff review.";
@@ -80,7 +85,11 @@ export async function runEligibilityCheck(policyId: string): Promise<void> {
     } else {
       finalStatus = "FAILED";
       summaryLine = result.error.message;
-      responsePayload = result.error as any;
+      responsePayload = {
+        code: result.error.code,
+        message: result.error.message,
+        retryable: result.error.retryable,
+      } satisfies Prisma.InputJsonObject;
       reviewNote = `Error: ${result.error.message}`;
     }
 

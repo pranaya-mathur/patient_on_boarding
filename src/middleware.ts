@@ -5,9 +5,9 @@ import type { NextRequest } from "next/server";
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Paths that require authentication
-  const isStaffPath = pathname.startsWith("/staff") || pathname.startsWith("/api/staff");
-  
+  // Page routes only — staff APIs enforce `auth()` and return JSON 401 (no HTML redirect).
+  const isStaffPath = pathname.startsWith("/staff");
+
   // Public paths under staff or auth
   const isPublicStaffPath = pathname === "/staff/login" || pathname === "/login";
 
@@ -25,16 +25,8 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api/intake (public intake API)
-     * - api/checkin (public check-in API)
-     * - api/health (public health check)
-     * - api/uploads (public file serving)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    "/((?!api/intake|api/checkin|api/health|api/uploads|_next/static|_next/image|favicon.ico).*)",
+    /* Explicit list — previous root `middleware.ts` was ignored with `src/app`; keep matchers tight. */
+    "/staff",
+    "/staff/:path*",
   ],
 };

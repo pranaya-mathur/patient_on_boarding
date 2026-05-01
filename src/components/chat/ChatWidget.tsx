@@ -68,7 +68,7 @@ export function ChatWidget({ intakeToken }: ChatWidgetProps) {
       } else {
         throw new Error(data.error || "Failed to get reply");
       }
-    } catch (err) {
+    } catch {
       setMessages((prev) => [
         ...prev,
         {

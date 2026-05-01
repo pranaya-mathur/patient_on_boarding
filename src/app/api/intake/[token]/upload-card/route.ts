@@ -8,10 +8,10 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
-    const { token } = params;
+    const { token } = await params;
     const formData = await req.formData();
     
     const file = formData.get("file") as File | null;

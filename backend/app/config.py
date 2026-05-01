@@ -1,7 +1,6 @@
 from functools import lru_cache
-from typing import List
 
-from pydantic import field_validator
+from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,7 +9,12 @@ class Settings(BaseSettings):
 
     app_env: str = "development"
     app_port: int = 8001
-    cors_allowed_origins: List[str] = ["http://localhost:3000"]
+    # Comma-separated in .env — do not use List[str] here: pydantic-settings JSON-decodes list
+    # env values before validators run, which breaks plain URLs and empty values.
+    cors_allowed_origins_csv: str = Field(
+        default="http://localhost:3000",
+        validation_alias="CORS_ALLOWED_ORIGINS",
+    )
 
     groq_api_key: str = ""
     groq_model: str = "llama-3.1-70b-versatile"
@@ -18,14 +22,13 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_vision_model: str = "gpt-4o-mini"
 
-    @field_validator("cors_allowed_origins", mode="before")
-    @classmethod
-    def _parse_origins(cls, value: str | list[str]) -> list[str]:
-        if isinstance(value, list):
-            return value
-        if not value:
+    @computed_field
+    @property
+    def cors_allowed_origins(self) -> list[str]:
+        raw = self.cors_allowed_origins_csv.strip()
+        if not raw:
             return ["http://localhost:3000"]
-        return [item.strip() for item in value.split(",") if item.strip()]
+        return [item.strip() for item in raw.split(",") if item.strip()]
 
 
 @lru_cache(maxsize=1)

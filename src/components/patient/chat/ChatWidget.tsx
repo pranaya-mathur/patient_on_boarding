@@ -59,7 +59,7 @@ export function ChatWidget({ token }: { token: string }) {
       } else {
         throw new Error("Failed to chat");
       }
-    } catch (err) {
+    } catch {
       setMessages((prev) => [
         ...prev,
         {

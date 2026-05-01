@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useState, use } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CheckCircle2, AlertCircle, Calendar } from "lucide-react";
-import { cn } from "@/lib/utils";
-
 type CheckInPageProps = { params: Promise<{ token: string }> };
 
 export default function CheckInPage({ params }: CheckInPageProps) {
@@ -34,7 +32,7 @@ export default function CheckInPage({ params }: CheckInPageProps) {
         setStatus("ERROR");
         setError(json.error || "Failed to check in. Please see the front desk.");
       }
-    } catch (err) {
+    } catch {
       setStatus("ERROR");
       setError("An unexpected error occurred. Please try again.");
     }
@@ -51,9 +49,9 @@ export default function CheckInPage({ params }: CheckInPageProps) {
             {status === "SUCCESS" ? "Check-in complete" : "Welcome to the clinic"}
           </h1>
           <p className="text-[15px] leading-relaxed text-muted-foreground">
-            {status === "SUCCESS" 
-              ? "You've successfully checked in. Please take a seat, and we'll be with you shortly."
-              : "We've located your appointment. Please confirm your details below to finish checking in."}
+            {status === "SUCCESS"
+              ? `You've successfully checked in. Please take a seat, and we'll be with you shortly.`
+              : `We've located your appointment. Please confirm your details below to finish checking in.`}
           </p>
         </header>
 
@@ -80,8 +78,10 @@ export default function CheckInPage({ params }: CheckInPageProps) {
             </div>
             
             <div className="rounded-xl border border-border bg-muted/20 p-5 text-sm leading-relaxed text-muted-foreground">
-              <p className="font-medium text-foreground mb-1">What's next?</p>
-              <p>A member of our team will call your name when we're ready to see you. Thank you for your patience.</p>
+              <p className="font-medium text-foreground mb-1">{`What's next?`}</p>
+              <p>
+                {`A member of our team will call your name when we're ready to see you. Thank you for your patience.`}
+              </p>
             </div>
           </div>
         ) : (
@@ -92,7 +92,7 @@ export default function CheckInPage({ params }: CheckInPageProps) {
               </div>
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-foreground">Confirm your arrival</p>
-                <p className="truncate text-xs text-muted-foreground">For today's scheduled visit</p>
+                <p className="truncate text-xs text-muted-foreground">{`For today's scheduled visit`}</p>
               </div>
             </div>
 
